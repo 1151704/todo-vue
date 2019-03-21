@@ -1,0 +1,237 @@
+<template>
+  <div>
+    <input
+      type="text"
+      class="todo-input"
+      placeholder="What needs to be done"
+      v-model="newTodo"
+      @keyup.enter="addTodo"
+    >
+    <transition-group
+      name="fade"
+      enter-active-class="animated fadeInUp"
+      leave-active-class="animated fadeOutDown"
+    >
+      <todo-item
+        v-for="(todo, index) in todosFiltered"
+        :key="todo.id"
+        :todo="todo"
+        :index="index"
+        :ckeckAll="!anyRemaining"
+      ></todo-item>
+    </transition-group>
+    <div class="extra-container">
+      <todo-check-all :anyRemaining="!anyRemaining"></todo-check-all>
+      <todo-items-remaining :remaining="remaining"></todo-items-remaining>
+    </div>
+    <div class="extra-container">
+      <todo-filtered :filter="filter"></todo-filtered>
+      <div>
+        <transition name="fade">
+          <todo-clear :show="showClearCompletedButton"></todo-clear>
+        </transition>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script>
+import TodoItem from "./TodoItem";
+import TodoItemsRemaining from "./TodoItemsRemaining";
+import TodoCheckAll from "./TodoCheckAll";
+import TodoFiltered from "./TodoFiltered";
+import TodoClear from "./TodoClear";
+
+export default {
+  name: "todo-list",
+  components: {
+    TodoItem,
+    TodoItemsRemaining,
+    TodoCheckAll,
+    TodoFiltered,
+    TodoClear
+  },
+  data() {
+    return {
+      newTodo: "",
+      idForTodo: 3,
+      beforeEditCache: "",
+      filter: "all",
+      todos: [
+        {
+          id: 1,
+          title: "Finist Vue Screencast",
+          completed: false,
+          editing: false
+        },
+        {
+          id: 2,
+          title: "Take over world",
+          completed: false,
+          editing: false
+        }
+      ]
+    };
+  },
+  methods: {
+    addTodo() {
+      if (this.newTodo.trim().length == 0) {
+        return;
+      }
+      this.todos.push({
+        id: this.idForTodo,
+        title: this.newTodo,
+        completed: false,
+        editing: false
+      });
+      this.newTodo = "";
+      this.idForTodo++;
+    },
+    removeTodo(id) {
+      const index = this.todos.findIndex(todo => todo.id == id);
+      this.todos.splice(index, 1);
+    },
+    checkAllTodos() {
+      this.todos.forEach(todo => (todo.completed = event.target.checked));
+    },
+    clearCompleted() {
+      this.todos = this.todos.filter(todo => !todo.completed);
+    },
+    finishedEdit(data) {
+      const index = this.todos.findIndex(todo => todo.id == data.id);
+      this.todos.splice(index, 1, data);
+    }
+  },
+  created() {
+    eventBus.$on("removedTodo", index => this.removeTodo(index)),
+      eventBus.$on("finishedEdit", data => this.finishedEdit(data)),
+      eventBus.$on("checkAllChange", () => this.checkAllTodos()),
+      eventBus.$on("filterChange", filter => (this.filter = filter)),
+      eventBus.$on("clearCompleted", () => this.clearCompleted());
+  },
+  beforeDestroy() {
+    eventBus.$off("removedTodo", index => this.removeTodo(index)),
+      eventBus.$off("finishedEdit", data => this.finishedEdit(data)),
+      eventBus.$off("checkAllChange", () => this.checkAllTodos()),
+      eventBus.$off("filterChange", filter => (this.filter = filter)),
+      eventBus.$off("clearCompleted", () => this.clearCompleted());
+  },
+  computed: {
+    remaining() {
+      return this.todos.filter(todo => !todo.completed).length;
+    },
+    anyRemaining() {
+      return this.remaining != 0 || this.todos.length == 0;
+    },
+    todosFiltered() {
+      if (this.filter == "all") {
+        return this.todos;
+      } else if (this.filter == "active") {
+        return this.todos.filter(todo => !todo.completed);
+      } else if (this.filter == "completed") {
+        return this.todos.filter(todo => todo.completed);
+      }
+    },
+    showClearCompletedButton() {
+      return this.todos.filter(todo => todo.completed).length > 0;
+    }
+  }
+};
+</script>
+
+<style lang="scss">
+@import url("https://cdnjs.cloudflare.com/ajax/libs/animate.css/3.5.2/animate.min.css");
+.todo-input {
+  width: 100%;
+  padding: 10px 18px;
+  font-size: 18px;
+  margin-bottom: 16px;
+
+  &:focus {
+    outline: 0;
+  }
+}
+.cross-center {
+  display: flex;
+  justify-content: center;
+}
+.main-center {
+  display: flex;
+  align-items: center;
+}
+.todo-item {
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  animation-duration: 0.3s;
+}
+.remove-item {
+  cursor: pointer;
+  margin-left: 14px;
+  &:hover {
+    color: black;
+  }
+}
+.todo-item-left {
+  // later
+  display: flex;
+  align-items: center;
+}
+.todo-item-label {
+  padding: 10px;
+  border: 1px solid white;
+  margin-left: 12px;
+}
+.todo-item-edit {
+  font-size: 24px;
+  color: #2c3e50;
+  margin-left: 12px;
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #ccc; //override defaults
+  font-family: "Avenir", Helvetica, Arial, sans-serif;
+  &:focus {
+    outline: none;
+  }
+}
+.completed {
+  text-decoration: line-through;
+  color: grey;
+}
+.extra-container {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 16px;
+  border-top: 1px solid lightgrey;
+  padding-top: 14px;
+  margin-bottom: 14px;
+}
+button {
+  font-size: 14px;
+  background-color: white;
+  appearance: none;
+  border: 1px solid #333;
+  border-radius: 0.25em;
+  &:hover {
+    background: lightgreen;
+  }
+  &:focus {
+    outline: none;
+  }
+}
+.active {
+  background: lightgreen;
+}
+// CSS Transitions
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.2s;
+}
+.fade-enter,
+.fade-leave-to {
+  opacity: 0;
+}
+</style>
+
