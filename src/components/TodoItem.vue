@@ -48,6 +48,7 @@ export default {
       beforeEditCache: ""
     };
   },
+  computed: {},
   created() {
     eventBus.$on("pluralize", this.handlePluralize);
   },
@@ -61,7 +62,7 @@ export default {
   },
   methods: {
     removeTodo() {
-      eventBus.$emit("removedTodo", this.id);
+      this.$store.dispatch("removeTodo", this.id);
     },
     editTodo() {
       this.beforeEditCache = this.title;
@@ -76,7 +77,7 @@ export default {
       this.finishedEdit();
     },
     finishedEdit() {
-      eventBus.$emit("finishedEdit", {
+      this.$store.dispatch("finishedEdit", {
         id: this.id,
         title: this.title,
         completed: this.completed,
